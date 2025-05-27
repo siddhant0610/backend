@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Contact = require('../Models/contactMessage');
+const Contact = require('../Models/ContactMessage');
 const { body, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
