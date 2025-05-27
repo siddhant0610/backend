@@ -9,7 +9,7 @@ const contactRoutes = require('./Routes/contact');  // Import routes
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(cors({ origin: ['http://localhost:5173', 'www.tatvaalignment.com'] }));
 app.use(cors());
 app.use(express.json());
 
