@@ -8,16 +8,22 @@ const contactRoutes = require('./Routes/contact');  // Import routes
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const cors = require('cors');
+
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGODB_URI)
+app.get('/', (req,res) => {
+  res.send("Hello from contact route");
+});
+mongoose.connect(process.env.MONGODB_URI, {
+ 
+})
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
 // Use the contact routes with a prefix, e.g., /api/contact
 app.use('/api/contact', contactRoutes);
+
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
