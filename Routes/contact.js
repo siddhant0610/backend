@@ -126,5 +126,15 @@ router.get('/export', async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+router.get('/contact', async (req, res) => {
+  try {
+    const contacts = await Contact.find().sort({ createdAt: -1 }); // newest first
+    res.status(200).json({ success: true, data: contacts });
+  } catch (error) {
+    console.error('Error fetching contacts:', error);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+});
+
 
 module.exports = router;

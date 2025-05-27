@@ -28,14 +28,12 @@ app.use(express.json());
 app.get('/', (req,res) => {
   res.send("Hello from contact route");
 });
-mongoose.connect(process.env.MONGODB_URI, {
- 
-})
+mongoose.connect(process.env.MONGODB_URI, {})
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
 // Use the contact routes with a prefix, e.g., /api/contact
-app.use('/api/contact', contactRoutes);
+app.use('/api/', contactRoutes);
 
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
