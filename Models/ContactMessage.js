@@ -12,8 +12,7 @@ const contactSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Email is required'],
     lowercase: true,
-    match: [/\S+@\S+\.\S+/, 'Email is invalid'],
-    index: true
+    match: [/\S+@\S+\.\S+/, 'Email is invalid']
   },
   message: {
     type: String,

@@ -4,25 +4,33 @@ const Contact = require('../Models/ContactMessage');
 const { body, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
-const { Parser } = require('json2csv');
 
-// Rate limiter
+// Rate limiter to prevent abuse
 const contactLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10,
-  message: 'Too many contact form submissions. Please try again later.'
+  message: 'Too many contact form submissions. Please try again later.',
 });
 
-// Nodemailer setup
+// Nodemailer transporter setup
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.ADMIN_EMAIL,
-    pass: process.env.EMAIL_PASSWORD
+    pass: process.env.EMAIL_PASSWORD,
+  },
+});
+
+// Verify transporter on server start
+transporter.verify((error, success) => {
+  if (error) {
+    console.error('❌ Nodemailer transporter error:', error);
+  } else {
+    console.log('✅ Nodemailer transporter is ready');
   }
 });
 
-// POST: Create a contact
+// POST: Create a contact message and send email
 router.post(
   '/',
   contactLimiter,
@@ -34,48 +42,49 @@ router.post(
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ success: false, errors: errors.array() });
     }
 
+    const { name, email, message } = req.body;
+
     try {
-      const { name, email, message } = req.body;
+      // Save to MongoDB
       const newContact = new Contact({ name, email, message });
       const savedContact = await newContact.save();
 
+      // Send email to admin
       await transporter.sendMail({
-        from: process.env.ADMIN_EMAIL,
-        to: process.env.ADMIN_EMAIL,
+        from: `"${name}" <${process.env.ADMIN_EMAIL}>`, // sender address
+        to: 'neelukhajuria11@gmail.com', // admin receives the mail
         replyTo: email,
         subject: `New Contact Form Submission from ${name}`,
-        text: `Email: ${email}\n\nMessage:\n${message}`
+        text: `
+You have received a new message from the contact form:
+
+Name: ${name}
+Email: ${email}
+
+Message:
+${message}
+        `,
       });
 
-      res.status(200).json({ success: true, data: savedContact });
+      return res.status(200).json({
+        success: true,
+        message: 'Message sent successfully',
+        data: savedContact,
+      });
     } catch (err) {
-      console.error('Error in POST /contact:', err);
-      res.status(500).json({ success: false, message: 'Server Error' });
+      console.error('❌ Error in POST /contact:', err.message);
+      return res.status(500).json({
+        success: false,
+        message: 'An error occurred while processing your request. Please try again.',
+      });
     }
   }
 );
-router.post('/contact', async (req, res) => {
-  try {
-    const { name, email, message } = req.body;
 
-    if (!name || !email || !message) {
-      return res.status(400).json({ success: false, message: "All fields are required." });
-    }
-
-    // Simulate saving to DB or sending email
-    console.log("Received contact form data:", { name, email, message });
-
-    res.status(200).json({ success: true, message: "Message received!" });
-  } catch (error) {
-    console.error("Server error:", error);
-    res.status(500).json({ success: false, message: "Server Error" });
-  }
-});
-
-// GET: Retrieve contacts with optional filters
+// GET: Retrieve all contacts with optional filters
 router.get('/', async (req, res) => {
   const { isRead, email } = req.query;
   const filter = {};
@@ -84,57 +93,11 @@ router.get('/', async (req, res) => {
 
   try {
     const contacts = await Contact.find(filter).sort({ createdAt: -1 }).lean();
-    res.status(200).json({ success: true, data: contacts });
+    return res.status(200).json({ success: true, data: contacts });
   } catch (err) {
-    console.error('Error in GET /contact:', err);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    console.error('❌ Error in GET /contact:', err.message);
+    return res.status(500).json({ success: false, message: 'Server Error' });
   }
 });
-
-// PATCH: Mark as read
-router.patch('/:id/mark-read', async (req, res) => {
-  try {
-    const updated = await Contact.findByIdAndUpdate(req.params.id, { isRead: true }, { new: true });
-    res.status(200).json({ success: true, data: updated });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
-  }
-});
-
-// DELETE: Delete a contact
-router.delete('/:id', async (req, res) => {
-  try {
-    await Contact.findByIdAndDelete(req.params.id);
-    res.status(204).send();
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
-  }
-});
-
-// GET: Export contacts as CSV
-router.get('/export', async (req, res) => {
-  try {
-    const contacts = await Contact.find().lean();
-    const fields = ['name', 'email', 'message', 'isRead', 'createdAt'];
-    const json2csvParser = new Parser({ fields });
-    const csv = json2csvParser.parse(contacts);
-
-    res.header('Content-Type', 'text/csv');
-    res.attachment('contacts.csv');
-    return res.send(csv);
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-router.get('/contact', async (req, res) => {
-  try {
-    const contacts = await Contact.find().sort({ createdAt: -1 }); // newest first
-    res.status(200).json({ success: true, data: contacts });
-  } catch (error) {
-    console.error('Error fetching contacts:', error);
-    res.status(500).json({ success: false, message: 'Server Error' });
-  }
-});
-
 
 module.exports = router;
